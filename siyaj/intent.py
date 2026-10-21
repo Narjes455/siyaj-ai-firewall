@@ -175,17 +175,17 @@ def analyze_intent(text: str, loose: bool = False, skel: bool = False):
         s = 0.5          # لوحده مشبوه فقط ("how to ignore a rule in eslint")
         if h["SCOPE"]:
             s = 0.9      # مع نطاق (السابقة/كل/your/system) = حقن واضح
-        signals.append(f"override→target: '{pair[0]}' … '{pair[1]}'")
+        signals.append(f"فعل إلغاء مع تعليمات النموذج: '{pair[0]}' … '{pair[1]}'")
         # كلام منقول عن طرف ثالث ("my teacher said to disregard the homework instructions")
         if h["REPORTED"] and _near(h["REPORTED"], h["OVERRIDE"] or h["INVALIDATE"], 3):
             s = min(s, 0.45)
-            signals.append(f"downgraded: reported speech '{h['REPORTED'][0][1]}'")
+            signals.append(f"خُفّضت الخطورة: كلام منقول عن طرف ثالث '{h['REPORTED'][0][1]}'")
         if s > score:
             score, category = s, "Prompt Injection"
 
     # 1b) إعادة تأطير المهمة
     if h["REFRAME"]:
-        signals.append(f"task reframing: '{h['REFRAME'][0][1]}'")
+        signals.append(f"محاولة إعادة تعريف مهمة النموذج: '{h['REFRAME'][0][1]}'")
         if 0.7 > score:
             score, category = 0.7, "Prompt Injection"
 
@@ -194,18 +194,18 @@ def analyze_intent(text: str, loose: bool = False, skel: bool = False):
         js = 0.8
         if h["DISCUSS"]:   # "اكتب مقال عن خطورة كسر الحماية" = موضوع، مو أمر
             js = 0.4
-            signals.append(f"downgraded: discussion context '{h['DISCUSS'][0][1]}'")
-        signals.append(f"jailbreak token: '{h['JAILBREAK_TOKEN'][0][1]}'")
+            signals.append(f"خُفّضت الخطورة: سياق نقاش أو شرح '{h['DISCUSS'][0][1]}'")
+        signals.append(f"كلمة كسر حماية معروفة: '{h['JAILBREAK_TOKEN'][0][1]}'")
         if js > score:
             score, category = js, "Jailbreak"
     pair = _near(h["ROLEPLAY"], h["UNRESTRICTED"], 14)
     if pair:
-        signals.append(f"roleplay→unrestricted: '{pair[0]}' … '{pair[1]}'")
+        signals.append(f"لعب دور مع رفع القيود: '{pair[0]}' … '{pair[1]}'")
         if 0.85 > score:
             score, category = 0.85, "Jailbreak"
     elif h["UNRESTRICTED"]:
         # رفع قيود بدون لعب دور: يرفع الخطورة، ومع فعل إلغاء أو أمر تنفيذ يصير هجوم
-        signals.append(f"unrestricted request: '{h['UNRESTRICTED'][0][1]}'")
+        signals.append(f"طلب العمل بدون قيود: '{h['UNRESTRICTED'][0][1]}'")
         s = 0.45 + (0.25 if h["OVERRIDE"] or h["ROLEPLAY"] else 0)
         if s > score:
             score, category = s, "Jailbreak"
@@ -215,14 +215,14 @@ def analyze_intent(text: str, loose: bool = False, skel: bool = False):
     if not pair:
         pair = _near(h["SELF_INSTR"], h["LEAK_VERB"], 6)
     if pair:
-        signals.append(f"leak→self-instructions: '{pair[0]}' … '{pair[1]}'")
+        signals.append(f"طلب كشف تعليمات النظام: '{pair[0]}' … '{pair[1]}'")
         if 0.85 > score:
             score, category = 0.85, "Prompt Leaking"
 
     # إشارات ضعيفة (ما تحظر لحالها)
     if score == 0 and h["OVERRIDE"] and h["SCOPE"] and h["ROLEPLAY"]:
         score, category = 0.5, "Suspicious"
-        signals.append("weak: override + scope + roleplay")
+        signals.append("إشارة ضعيفة: إلغاء + نطاق + لعب دور")
 
     exec_enc = bool(h["EXEC_ENCODED"])
     return min(score, 1.0), category, signals, exec_enc

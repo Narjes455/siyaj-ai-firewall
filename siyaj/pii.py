@@ -54,25 +54,25 @@ def find_pii(raw: str):
     found = []
 
     for m in EMAIL.finditer(text):
-        found.append(("Email", m.group(0)))
+        found.append(("بريد إلكتروني", m.group(0)))
     for rx in (EMAIL_OBF, EMAIL_WORDS):
         for m in rx.finditer(text):
-            found.append(("Email (obfuscated)", m.group(0)))
+            found.append(("بريد إلكتروني مموّه", m.group(0)))
 
     for m in IBAN_SA.finditer(text):
         if iban_ok(m.group(0)):
-            found.append(("Saudi IBAN", m.group(0)))
+            found.append(("آيبان سعودي", m.group(0)))
 
     for m in DIGIT_RUN.finditer(text):
         token = m.group(0)
         digits = re.sub(r"[^\d]", "", token)
         if PHONE_SA.match(re.sub(r"[ \-]", "", token)):
-            found.append(("Saudi phone", token))
+            found.append(("رقم جوال سعودي", token))
         elif len(digits) == 10 and digits[0] in "12" and luhn_ok(digits):
-            kind = "Saudi National ID" if digits[0] == "1" else "Iqama number"
+            kind = "رقم هوية وطنية" if digits[0] == "1" else "رقم إقامة"
             found.append((kind, token))
         elif 13 <= len(digits) <= 19 and luhn_ok(digits):
-            found.append(("Payment card", token))
+            found.append(("بطاقة دفع", token))
 
     return found
 
@@ -80,5 +80,5 @@ def find_pii(raw: str):
 def redact(raw: str, items):
     out = raw
     for kind, value in items:
-        out = out.replace(value, f"[{kind.upper()} REDACTED]")
+        out = out.replace(value, f"[تم إخفاء {kind}]")
     return out
