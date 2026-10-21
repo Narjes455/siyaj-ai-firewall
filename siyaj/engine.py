@@ -12,7 +12,7 @@
                  │                                         ▼
                  └─► طبقة تحليل النية ► درجة الخطورة ► القرار + الأدلة
 """
-from .normalize import base_normalize, leet_view, reversed_view, decoded_views
+from .normalize import base_normalize, leet_views, reversed_view, decoded_views, collapsed_view
 from .intent import analyze_intent
 from .pii import find_pii, redact
 
@@ -36,9 +36,10 @@ def analyze_prompt(prompt: str) -> dict:
     # --- مناظير النص ---
     norm, obfuscations = base_normalize(prompt)
     views = [("normalized", norm)]
-    lv = leet_view(norm)
-    if lv != norm:
+    for lv in leet_views(norm):
         views.append(("leet", lv))
+    if "letter_spacing" in obfuscations:
+        views.append(("collapsed", collapsed_view(norm)))
     views.append(("reversed", reversed_view(norm)))
     for enc, decoded in decoded_views(prompt):
         dnorm, dob = base_normalize(decoded)
@@ -48,7 +49,8 @@ def analyze_prompt(prompt: str) -> dict:
     best = (0.0, None, [], "normalized")
     exec_encoded = False
     for name, text in views:
-        score, cat, signals, ex = analyze_intent(text)
+        score, cat, signals, ex = analyze_intent(text, loose=(name == "collapsed"),
+                                              skel=(name == "leet"))
         exec_encoded = exec_encoded or ex
         if score > best[0]:
             best = (score, cat, signals, name)

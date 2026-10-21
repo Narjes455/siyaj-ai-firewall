@@ -66,6 +66,10 @@ def base_normalize(text: str):
             found.append("homoglyphs")
         t = t.translate(HOMOGLYPHS)
 
+    # إزالة علامات الحروف اللاتينية (précédentes -> precedentes) بدون لمس العربي
+    t = "".join(ch for ch in unicodedata.normalize("NFKD", t)
+                if not (unicodedata.combining(ch) and ord(ch) < 0x0600))
+    t = unicodedata.normalize("NFC", t)
     t = to_ascii_digits(t)
     t = t.translate(ARABIC_LETTERS)
     t = t.lower()
@@ -81,15 +85,29 @@ def base_normalize(text: str):
     return t, found
 
 
-def leet_view(t: str):
-    """منظور يحوّل الأرقام داخل الكلمات لحروف (1gn0r3 -> ignore)."""
-    def fix(m):
-        w = m.group(0)
-        if re.search(r"[a-z]", w) and re.search(r"[0-9@$!|]", w):
-            return w.translate(LEET)
-        return w
-    out = re.sub(r"[a-z0-9@$!|]+", fix, t)
-    return out
+LEET_L = str.maketrans({"1": "l"})
+
+
+def leet_views(t: str):
+    """منظوران يحوّلان الأرقام داخل الكلمات لحروف (1gn0r3 -> ignore).
+    الرقم 1 غامض (i أو l) فنولّد الاحتمالين."""
+    outs = []
+    for pre in (None, LEET_L):
+        def fix(m):
+            w = m.group(0)
+            if re.search(r"[a-z]", w) and re.search(r"[0-9@$!|]", w):
+                return (w.translate(pre) if pre else w).translate(LEET)
+            return w
+        o = re.sub(r"[a-z0-9@$!|]+", fix, t)
+        if o != t and o not in outs:
+            outs.append(o)
+    return outs
+
+
+def collapsed_view(raw_norm: str):
+    """للنص اللي كل حروفه مفصولة (i.g.n.o.r.e a.l.l) فتضيع حدود الكلمات:
+    نلصق كل شي ونحلل بدون حدود كلمات."""
+    return re.sub(r"\s+", "", raw_norm)
 
 
 def reversed_view(t: str) -> str:
