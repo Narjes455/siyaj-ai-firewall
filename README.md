@@ -15,11 +15,27 @@ It helps detect and block:
 - Provides threat statistics through `/stats`
 - Displays recorded logs through `/logs`
 
+## How Siyaj v2 Works (multi-layer, not keyword matching)
+1. **Normalization layer** – undoes obfuscation: letter spacing, leetspeak, Cyrillic homoglyphs, zero-width chars, Arabic tatweel/tashkeel, fullwidth/math fonts, Arabic-Indic digits.
+2. **Multi-view analysis** – the prompt is also checked reversed, leet-decoded, and Base64/Hex-decoded. Attacks hidden only in a decoded view get a higher risk score.
+3. **Concept-based intent analysis (Arabic + English)** – detects *combinations* of concepts (override verb + model instructions + scope, role-play + no restrictions, leak verb + self-instructions) within a word window, with downgrades for discussion context and reported speech to avoid false positives.
+4. **Validated PII detection** – Saudi phones in all formats, National ID / Iqama (Luhn), Saudi IBAN (ISO 13616 mod-97), payment cards (Luhn), plain and obfuscated emails. Logs store the redacted prompt.
+
+Every decision returns a `risk_score` (0–100) and human-readable `evidence`.
+
+## Benchmark (see BENCHMARK.md)
+| Test set (first run, never tuned on) | Original | Siyaj v2 | False positives |
+|---|---|---|---|
+| Held-out (73 cases) | 2.1% | 79.2% | 2/25 |
+| Blind round 2 (43 cases) | 3.8% | 38.5% | 0/17 |
+
+Known gaps: Arabic dialect phrasings, uncovered languages, hypothetical framing, indirect leak requests.
+
 ## Tech Stack
 - Python
 - FastAPI
 - Pydantic
-- Regex-based threat detection
+- Pure-Python detection engine (`siyaj/`), no external dependencies
 
 ## API Endpoints
 

@@ -68,14 +68,16 @@ def evaluate(cases, detector):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--legacy", action="store_true")
-    ap.add_argument("--set", default="dev", choices=["dev", "heldout"])
+    ap.add_argument("--set", default="dev", choices=["dev", "heldout", "blind"])
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
     if args.set == "dev":
         from dev_set import DEV_CASES as cases
-    else:
+    elif args.set == "heldout":
         from heldout_set import HELDOUT_CASES as cases
+    else:
+        from blind_set import BLIND_CASES as cases
 
     detector = legacy_detector if args.legacy else engine_detector
     s = evaluate(cases, detector)
